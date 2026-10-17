@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b5ed7">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Tatkal Helper">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Tatkal Helper</title>
+<style>
+:root{--bg:#f5f7fb;--card:#fff;--text:#1a1f2b;--muted:#667085;--brand:#0b5ed7;--line:#e4e7ec;--ok:#12803c;--danger:#c0392b}
+@media (prefers-color-scheme:dark){:root{--bg:#10141c;--card:#1a2030;--text:#e8ecf4;--muted:#98a2b3;--brand:#5b9bff;--line:#2a3144;--ok:#46c37b;--danger:#ff7b6b}}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--text);padding:env(safe-area-inset-top) 0 calc(70px + env(safe-area-inset-bottom))}
+header{padding:16px;font-weight:700;font-size:18px}
+main{padding:0 14px;max-width:560px;margin:0 auto}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+h2{font-size:16px;margin:0 0 10px}
+label{display:block;font-size:12px;color:var(--muted);margin:8px 0 3px}
+input,select{width:100%;padding:10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--text);font-size:16px}
+.row{display:flex;gap:8px}.row>*{flex:1}
+button{font-family:inherit;padding:11px 14px;border:0;border-radius:10px;background:var(--brand);color:#fff;font-size:15px;font-weight:600;cursor:pointer}
+button.sec{background:transparent;color:var(--brand);border:1px solid var(--brand)}
+button.del{background:transparent;color:var(--danger);padding:6px 8px}
+.full{width:100%;margin-top:10px}
+.timer{font-size:34px;font-weight:700;text-align:center;font-variant-numeric:tabular-nums;margin:8px 0}
+.muted{color:var(--muted);font-size:13px}
+.item{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 0;border-top:1px solid var(--line)}
+.item:first-of-type{border-top:0}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--card);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;background:transparent;color:var(--muted);border-radius:0;padding:14px 4px;font-size:13px}
+nav button.on{color:var(--brand)}
+.tab{display:none}.tab.on{display:block}
+pre{white-space:pre-wrap;word-break:break-all;background:var(--bg);padding:10px;border-radius:10px;font-size:12px;border:1px solid var(--line)}
+.toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:#222;color:#fff;padding:10px 16px;border-radius:20px;font-size:14px;opacity:0;transition:.25s;pointer-events:none}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+<header>🚆 Tatkal Helper</header>
+<main>
+
+<!-- TATKAL TAB -->
+<section class="tab on" id="tab-tatkal">
+  <div class="card">
+    <h2>Tatkal Countdown</h2>
+    <label>Journey date (train ke start station se chalne ki date)</label>
+    <input type="date" id="jdate">
+    <label>Class</label>
+    <select id="tclass">
+      <option value="10">AC (1A/2A/3A/CC/EC) – 10:00 AM</option>
+      <option value="11">Sleeper (SL/2S) – 11:00 AM</option>
+    </select>
+    <div class="timer" id="timer">--:--:--</div>
+    <div class="muted" id="ttarget" style="text-align:center"></div>
+    <button class="full" id="btnRemind">🔔 5 min pehle reminder lagao</button>
+    <button class="full sec" id="btnIrctc">IRCTC kholo</button>
+    <p class="muted">Tatkal booking journey se 1 din pehle khulti hai (IST). Reminder tabhi bajega jab ye app/tab khula ho. Booking aap khud IRCTC app/website pe karenge.</p>
+  </div>
+  <div class="card">
+    <h2>Booking checklist</h2>
+    <div id="checklist"></div>
+  </div>
+</section>
+
+<!-- PASSENGERS TAB -->
+<section class="tab" id="tab-pax">
+  <div class="card">
+    <h2>Passenger Master List</h2>
+    <label>Naam (jaise ID par)</label><input id="pname" autocomplete="off">
+    <div class="row">
+      <div><label>Umar</label><input id="page" type="number" min="1" max="125"></div>
+      <div><label>Gender</label>
+        <select id="pgender"><option>Male</option><option>Female</option><option>Transgender</option></select></div>
+    </div>
+    <label>Berth preference</label>
+    <select id="pberth">
+      <option>No Preference</option><option>Lower</option><option>Middle</option><option>Upper</option>
+      <option>Side Lower</option><option>Side Upper</option>
+    </select>
+    <button class="full" id="btnAddPax">+ Passenger jodo</button>
+  </div>
+  <div class="card">
+    <h2>Saved passengers</h2>
+    <div id="paxList"></div>
+    <button class="full sec" id="btnCopyAll">Sab ki details copy karo</button>
+  </div>
+</section>
+
+<!-- ALERT TAB -->
+<section class="tab" id="tab-alert">
+  <div class="card">
+    <h2>Seat Alert Settings</h2>
+    <p class="muted">Ye settings yahan save hoti hain. Asli checking <b>seat_alert.py</b> karti hai (browser background mein check nahi kar sakta). Neeche se config copy karke script mein paste karein.</p>
+    <div class="row">
+      <div><label>Train no.</label><input id="atrain" inputmode="numeric" placeholder="12229"></div>
+      <div><label>Date</label><input id="adate" type="date"></div>
+    </div>
+    <div class="row">
+      <div><label>From (code)</label><input id="afrom" placeholder="LKO" style="text-transform:uppercase"></div>
+      <div><label>To (code)</label><input id="ato" placeholder="NDLS" style="text-transform:uppercase"></div>
+    </div>
+    <div class="row">
+      <div><label>Class</label>
+        <select id="acls"><option>SL</option><option>3A</option><option>2A</option><option>1A</option><option>CC</option><option>EC</option></select></div>
+      <div><label>Quota</label>
+        <select id="aquota"><option value="TQ">Tatkal (TQ)</option><option value="GN">General (GN)</option></select></div>
+    </div>
+    <button class="full" id="btnAddAlert">+ Alert save karo</button>
+  </div>
+  <div class="card">
+    <h2>Saved alerts</h2>
+    <div id="alertList"></div>
+    <pre id="cfg" hidden></pre>
+  </div>
+</section>
+
+</main>
+
+<nav>
+  <button class="on" data-tab="tatkal">⏱ Tatkal</button>
+  <button data-tab="pax">👥 Passengers</button>
+  <button data-tab="alert">🔔 Alerts</button>
+</nav>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  var $ = function(id){return document.getElementById(id)};
+  function load(k,d){try{var v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}}
+  function save(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+  function toast(m){var t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(function(){t.classList.remove('show')},2200)}
+  function copy(text){
+    if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(text).then(function(){toast('Copy ho gaya')},function(){toast('Copy nahi hua')})}
+    else{var a=document.createElement('textarea');a.value=text;document.body.appendChild(a);a.select();try{document.execCommand('copy');toast('Copy ho gaya')}catch(e){toast('Copy nahi hua')}document.body.removeChild(a)}
+  }
+  function el(tag,text,cls){var e=document.createElement(tag);if(text!=null)e.textContent=text;if(cls)e.className=cls;return e}
+
+  /* ---------- tabs ---------- */
+  document.querySelectorAll('nav button').forEach(function(b){
+    b.onclick=function(){
+      document.querySelectorAll('nav button').forEach(function(x){x.classList.remove('on')});
+      document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('on')});
+      b.classList.add('on');$('tab-'+b.dataset.tab).classList.add('on');
+    };
+  });
+
+  /* ---------- Tatkal countdown ---------- */
+  var st=load('tatkal',{date:'',hour:'10'});
+  $('jdate').value=st.date;$('tclass').value=st.hour;
+  var remindTimer=null;
+  function target(){
+    if(!$('jdate').value)return null;
+    var p=$('jdate').value.split('-').map(Number);
+    var h=('0'+$('tclass').value).slice(-2);
+    // booking opens 1 day before journey, IST
+    var open=new Date(Date.UTC(p[0],p[1]-1,p[2]-1));
+    var iso=open.getUTCFullYear()+'-'+('0'+(open.getUTCMonth()+1)).slice(-2)+'-'+('0'+open.getUTCDate()).slice(-2);
+    return new Date(iso+'T'+h+':00:00+05:30');
+  }
+  function tick(){
+    var t=target();
+    if(!t){$('timer').textContent='--:--:--';$('ttarget').textContent='Journey date chuniye';return}
+    $('ttarget').textContent='Booking khulti hai: '+t.toLocaleString('en-IN',{dateStyle:'medium',timeStyle:'short'});
+    var ms=t-Date.now();
+    if(ms<=0){$('timer').textContent='Booking khul chuki hai';return}
+    var s=Math.floor(ms/1000),d=Math.floor(s/86400);s%=86400;
+    var hh=('0'+Math.floor(s/3600)).slice(-2),mm=('0'+Math.floor(s%3600/60)).slice(-2),ss=('0'+s%60).slice(-2);
+    $('timer').textContent=(d?d+'d ':'')+hh+':'+mm+':'+ss;
+  }
+  setInterval(tick,1000);tick();
+  function persistTatkal(){save('tatkal',{date:$('jdate').value,hour:$('tclass').value});tick()}
+  $('jdate').onchange=persistTatkal;$('tclass').onchange=persistTatkal;
+
+  function fireReminder(){
+    var msg='Tatkal booking 5 minute mein khulti hai! Login kar lijiye.';
+    toast(msg);
+    if(navigator.vibrate)navigator.vibrate([300,150,300]);
+    try{if('Notification' in window&&Notification.permission==='granted')new Notification('Tatkal Helper',{body:msg})}catch(e){}
+    alert(msg);
+  }
+  $('btnRemind').onclick=function(){
+    var t=target();if(!t){toast('Pehle journey date chuniye');return}
+    var ms=t-Date.now()-5*60*1000;
+    if(ms<=0){toast('Reminder ka time nikal chuka hai');return}
+    if('Notification' in window&&Notification.permission==='default'){Notification.requestPermission()}
+    clearTimeout(remindTimer);
+    // setTimeout max ~24.8 days; Tatkal window is far shorter
+    remindTimer=setTimeout(fireReminder,Math.min(ms,2147483647));
+    toast('Reminder set (app khula rakhein)');
+  };
+  $('btnIrctc').onclick=function(){window.open('https://www.irctc.co.in/nget/train-search','_blank','noopener')};
+
+  /* ---------- checklist ---------- */
+  var items=['IRCTC account login/password yaad hai','Master List mein sab passengers add hain','Payment (UPI/wallet) ready hai','Internet / data theek hai','Train aur station code pata hai','Booking se 2-3 min pehle login kar liya'];
+  var ck=load('checks',{});
+  function drawChecks(){
+    var box=$('checklist');box.textContent='';
+    items.forEach(function(txt,i){
+      var row=el('label',null,'item');row.style.cssText='margin:0;color:var(--text);font-size:15px;justify-content:flex-start';
+      var cb=document.createElement('input');cb.type='checkbox';cb.style.cssText='width:20px;height:20px';cb.checked=!!ck[i];
+      cb.onchange=function(){ck[i]=cb.checked;save('checks',ck)};
+      row.appendChild(cb);row.appendChild(el('span',txt));box.appendChild(row);
+    });
+  }
+  drawChecks();
+
+  /* ---------- passengers ---------- */
+  var pax=load('pax',[]);
+  function paxText(p){return p.name+', '+p.age+', '+p.gender+', '+p.berth}
+  function drawPax(){
+    var box=$('paxList');box.textContent='';
+    if(!pax.length){box.appendChild(el('div','Abhi koi passenger nahi','muted'));return}
+    pax.forEach(function(p,i){
+      var row=el('div',null,'item');
+      var info=el('div');info.appendChild(el('div',p.name));info.appendChild(el('div',p.age+' • '+p.gender+' • '+p.berth,'muted'));
+      var acts=el('div');
+      var c=el('button','Copy','sec');c.style.padding='6px 10px';c.onclick=function(){copy(paxText(p))};
+      var d=el('button','✕','del');d.onclick=function(){pax.splice(i,1);save('pax',pax);drawPax()};
+      acts.appendChild(c);acts.appendChild(d);row.appendChild(info);row.appendChild(acts);box.appendChild(row);
+    });
+  }
+  drawPax();
+  $('btnAddPax').onclick=function(){
+    var n=$('pname').value.trim(),a=parseInt($('page').value,10);
+    if(!n||!a||a<1||a>125){toast('Naam aur sahi umar daaliye');return}
+    pax.push({name:n,age:a,gender:$('pgender').value,berth:$('pberth').value});
+    save('pax',pax);$('pname').value='';$('page').value='';drawPax();toast('Passenger add hua');
+  };
+  $('btnCopyAll').onclick=function(){
+    if(!pax.length){toast('List khaali hai');return}
+    copy(pax.map(paxText).join('\n'));
+  };
+
+  /* ---------- alerts ---------- */
+  var alerts=load('alerts',[]);
+  function alertPy(a){
+    return 'TRAIN_NO = "'+a.train+'"\nFROM_STN = "'+a.from+'"\nTO_STN = "'+a.to+'"\nJOURNEY_DATE = "'+a.date+'"\nTRAVEL_CLASS = "'+a.cls+'"\nQUOTA = "'+a.quota+'"';
+  }
+  function drawAlerts(){
+    var box=$('alertList');box.textContent='';$('cfg').hidden=true;
+    if(!alerts.length){box.appendChild(el('div','Abhi koi alert nahi','muted'));return}
+    alerts.forEach(function(a,i){
+      var row=el('div',null,'item');
+      var info=el('div');info.appendChild(el('div',a.train+'  '+a.from+' → '+a.to));
+      info.appendChild(el('div',a.date+' • '+a.cls+' • '+a.quota,'muted'));
+      var acts=el('div');
+      var c=el('button','Config','sec');c.style.padding='6px 10px';
+      c.onclick=function(){var pre=$('cfg');pre.textContent=alertPy(a);pre.hidden=false;copy(alertPy(a))};
+      var d=el('button','✕','del');d.onclick=function(){alerts.splice(i,1);save('alerts',alerts);drawAlerts()};
+      acts.appendChild(c);acts.appendChild(d);row.appendChild(info);row.appendChild(acts);box.appendChild(row);
+    });
+  }
+  drawAlerts();
+  $('btnAddAlert').onclick=function(){
+    var a={train:$('atrain').value.trim(),date:$('adate').value,from:$('afrom').value.trim().toUpperCase(),to:$('ato').value.trim().toUpperCase(),cls:$('acls').value,quota:$('aquota').value};
+    if(!/^\d{4,5}$/.test(a.train)||!a.date||!a.from||!a.to){toast('Train no., date, from/to bharein');return}
+    alerts.push(a);save('alerts',alerts);drawAlerts();toast('Alert save hua');
+  };
+
+  /* ---------- service worker ---------- */
+  if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){})})}
+})();
+</script>
+</body>
+</html>
