@@ -47,7 +47,7 @@ pre{white-space:pre-wrap;word-break:break-all;background:var(--bg);padding:10px;
   <div class="card">
     <h2>Tatkal Countdown</h2>
     <label>Journey date (train ke start station se chalne ki date)</label>
-    <input type="date" id="jdate">
+    <input type="hidden" id="jdate">
     <label>Class</label>
     <select id="tclass">
       <option value="10">AC (1A/2A/3A/CC/EC) – 10:00 AM</option>
@@ -94,10 +94,8 @@ pre{white-space:pre-wrap;word-break:break-all;background:var(--bg);padding:10px;
   <div class="card">
     <h2>Seat Alert Settings</h2>
     <p class="muted">Ye settings yahan save hoti hain. Asli checking <b>seat_alert.py</b> karti hai (browser background mein check nahi kar sakta). Neeche se config copy karke script mein paste karein.</p>
-    <div class="row">
-      <div><label>Train no.</label><input id="atrain" inputmode="numeric" placeholder="12229"></div>
-      <div><label>Date</label><input id="adate" type="date"></div>
-    </div>
+    <label>Train no.</label><input id="atrain" inputmode="numeric" placeholder="12229">
+    <label>Date</label><input id="adate" type="hidden">
     <div class="row">
       <div><label>From (code)</label><input id="afrom" placeholder="LKO" style="text-transform:uppercase"></div>
       <div><label>To (code)</label><input id="ato" placeholder="NDLS" style="text-transform:uppercase"></div>
@@ -138,6 +136,35 @@ pre{white-space:pre-wrap;word-break:break-all;background:var(--bg);padding:10px;
   }
   function el(tag,text,cls){var e=document.createElement(tag);if(text!=null)e.textContent=text;if(cls)e.className=cls;return e}
 
+  /* ---------- date picker (Din / Mahina / Saal) ---------- */
+  function dateDropdowns(input){
+    var months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    var wrap=el('div',null,'row');wrap.style.marginTop='0';
+    var dS=document.createElement('select'),mS=document.createElement('select'),yS=document.createElement('select');
+    function opt(sel,val,txt){var o=document.createElement('option');o.value=val;o.textContent=txt;sel.appendChild(o)}
+    opt(dS,'','Din');for(var d=1;d<=31;d++)opt(dS,d,d);
+    opt(mS,'','Mahina');months.forEach(function(m,i){opt(mS,i+1,m)});
+    opt(yS,'','Saal');var y0=new Date().getFullYear();opt(yS,y0,y0);opt(yS,y0+1,y0+1);
+    wrap.appendChild(dS);wrap.appendChild(mS);wrap.appendChild(yS);
+    input.parentNode.insertBefore(wrap,input.nextSibling);
+    function pad(n){return ('0'+n).slice(-2)}
+    function update(){
+      if(dS.value&&mS.value&&yS.value){
+        var last=new Date(+yS.value,+mS.value,0).getDate();
+        if(+dS.value>last)dS.value=String(last);
+        input.value=yS.value+'-'+pad(mS.value)+'-'+pad(dS.value);
+      }else{input.value=''}
+      input.dispatchEvent(new Event('change'));
+    }
+    [dS,mS,yS].forEach(function(x){x.addEventListener('change',update)});
+    input._sync=function(){
+      var m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(input.value||'');
+      if(m){var yy=+m[1];if(!yS.querySelector('option[value="'+yy+'"]'))opt(yS,yy,yy);yS.value=String(yy);mS.value=String(+m[2]);dS.value=String(+m[3])}
+      else{dS.value='';mS.value='';yS.value=''}
+    };
+  }
+  dateDropdowns($('jdate'));dateDropdowns($('adate'));
+
   /* ---------- tabs ---------- */
   document.querySelectorAll('nav button').forEach(function(b){
     b.onclick=function(){
@@ -149,7 +176,7 @@ pre{white-space:pre-wrap;word-break:break-all;background:var(--bg);padding:10px;
 
   /* ---------- Tatkal countdown ---------- */
   var st=load('tatkal',{date:'',hour:'10'});
-  $('jdate').value=st.date;$('tclass').value=st.hour;
+  $('jdate').value=st.date;$('tclass').value=st.hour;$('jdate')._sync();
   var remindTimer=null;
   function target(){
     if(!$('jdate').value)return null;
